@@ -1,0 +1,96 @@
+# Push a tag vX.Y.Z (matching the version in Cargo.toml) to build binaries,
+# create the GitHub release and stage @lucyd/mcp on npm via trusted publishing.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, ext: .exe }
+          - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu, ext: '' }
+          - { os: ubuntu-22.04-arm, target: aarch64-unknown-linux-gnu, ext: '' }
+          - { os: macos-latest, target: aarch64-apple-darwin, ext: '' }
+          - { os: macos-latest, target: x86_64-apple-darwin, ext: '' }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches Cargo.toml version
+        shell: bash
+        run: |
+          v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != Cargo.toml version $v"; exit 1; }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      - shell: bash
+        run: |
+          mkdir dist
+          cp target/${{ matrix.target }}/release/lucyd-mcp${{ matrix.ext }} dist/lucyd-mcp-${{ matrix.target }}${{ matrix.ext }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.target }}
+          path: dist/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bin-*
+          merge-multiple: true
+          path: dist
+      - run: cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sums
+          path: dist/SHA256SUMS
+
+  npm:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sums
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Prepare package
+        run: |
+          cp README.md LICENSE npm/
+          node -e '
+            const fs = require("fs");
+            const sums = Object.fromEntries(fs.readFileSync("SHA256SUMS", "utf8").trim().split("\n")
+              .map(l => l.trim().split(/\s+\*?/)).map(([h, f]) => [f, h]));
+            fs.writeFileSync("npm/checksums.json", JSON.stringify(sums, null, 2));
+            const pkg = JSON.parse(fs.readFileSync("npm/package.json", "utf8"));
+            pkg.version = process.env.GITHUB_REF_NAME.slice(1);
+            fs.writeFileSync("npm/package.json", JSON.stringify(pkg, null, 2) + "\n");
+          '
+          cat npm/checksums.json
+      # Staged: the version goes live on npm only after an owner approves it (with 2FA)
+      # on npmjs.com → Staged Packages.
+      - run: npm install -g npm@latest
+      - run: npm stage publish .
+        working-directory: npm
