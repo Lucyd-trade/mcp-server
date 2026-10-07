@@ -16,8 +16,10 @@ Connect an AI agent (Claude, Cursor or any [MCP](https://modelcontextprotocol.io
 | `get_trader_stats` | Profit, volume, win rate of a wallet |
 | `get_pnl_history` | Profit over time |
 | `top_traders` | Leaderboard |
+| `get_status` | Whether the service, settlement and live trades are healthy |
 | `get_wallet` | Your address, ETH and USDC balances, approvals |
 | `get_open_orders` | Your resting orders |
+| `get_order_history` | Your past and current orders with status and fills |
 | `place_order` | Limit or market order (buy or sell up or down) |
 | `close_position` | Sell everything you hold on a market right away |
 | `cancel_orders` | Cancel by id, all on a market, or all |
@@ -102,7 +104,7 @@ The wallet needs USDC to buy and a little Sepolia ETH to pay gas for one-time ap
 
 ## How it works
 
-The server runs locally and talks to the agent over stdio. Market data comes from the public [API](https://api.testnet.lucyd.trade). Orders are signed with EIP-712 and sent to the order book over WebSocket (protocol in the [API docs](https://testnet.lucyd.trade)). Approvals and redemptions are plain transactions on Sepolia.
+The server runs locally and talks to the agent over stdio. Market data comes from the public [API](https://api.testnet.lucyd.trade). Orders are signed with EIP-712 and sent to the order book over WebSocket (protocol in the [API docs](https://testnet.lucyd.trade/api-docs)). Approvals and redemptions are plain transactions on Sepolia.
 
 | Contract | Address |
 |---|---|

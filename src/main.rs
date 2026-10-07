@@ -136,6 +136,29 @@ struct TopTradersParams {
     limit: Option<u32>,
 }
 
+#[derive(Deserialize, schemars::JsonSchema, Default)]
+struct OrderHistoryParams {
+    /// Only orders on this market address, or several comma separated.
+    market: Option<String>,
+    /// Only orders on this outcome: up or down. Needs market.
+    outcome: Option<String>,
+    /// Only buy or sell orders.
+    side: Option<String>,
+    /// Only these statuses, comma separated: received, queued, resting, pending_settlement, settled,
+    /// filled, cancelled, expired, rejected, settlement_failed.
+    status: Option<String>,
+    /// Only orders received after this time, unix seconds.
+    from: Option<u64>,
+    /// Only orders received before this time, unix seconds.
+    to: Option<u64>,
+    /// How many orders, 1 to 500. Default 50.
+    limit: Option<u32>,
+    /// nextCursor from the previous page, to get the next one.
+    cursor: Option<String>,
+    /// Include each order's events (placed, trades, settlement). Default false.
+    events: Option<bool>,
+}
+
 #[derive(Deserialize, schemars::JsonSchema)]
 struct PlaceOrderParams {
     /// Market address.
@@ -314,6 +337,37 @@ impl Lucyd {
     }
 
     #[tool(
+        description = "Health of the Lucyd service: API and database, settlement of ended markets on time, \
+        live trade stream. Use it when something looks stuck, e.g. a market is not resolving."
+    )]
+    async fn get_status(&self) -> ToolResult {
+        let mut out = serde_json::Map::new();
+        for (name, path) in [
+            ("api", "/health"),
+            ("settlement", "/health/settlement"),
+            ("live_trades", "/health/trades-live"),
+        ] {
+            // A 503 still carries the details, so keep the body instead of failing.
+            let v = match self
+                .0
+                .http
+                .get(format!("{}{path}", self.0.cfg.api_url))
+                .send()
+                .await
+            {
+                Ok(resp) => {
+                    let ok = resp.status().is_success();
+                    let body = resp.json::<Value>().await.unwrap_or(Value::Null);
+                    json!({ "healthy": ok, "details": body })
+                }
+                Err(e) => json!({ "healthy": false, "error": format!("unreachable: {e}") }),
+            };
+            out.insert(name.into(), v);
+        }
+        Ok(pretty(&Value::Object(out)))
+    }
+
+    #[tool(
         description = "The configured wallet: address, ETH (for gas) and USDC balances, whether trading is approved \
         and whether auto-redeem is on. Check this before the first trade."
     )]
@@ -325,6 +379,71 @@ impl Lucyd {
     async fn get_open_orders(&self) -> ToolResult {
         let orders = self.0.clob.open_orders(self.key()?).await?;
         Ok(pretty(&orders))
+    }
+
+    #[tool(
+        description = "Past and current orders of the configured wallet, newest first: status, filled quantity, \
+        reason. Kept until 7 days after the market resolves. Page with cursor = nextCursor until it is null."
+    )]
+    async fn get_order_history(&self, Parameters(p): Parameters<OrderHistoryParams>) -> ToolResult {
+        let key = self.key()?;
+        let markets = p
+            .market
+            .as_deref()
+            .map(|m| {
+                m.split(',')
+                    .map(parse_market)
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .transpose()?
+            .unwrap_or_default();
+        // The query is signed exactly as sent, so it is built by hand from validated values only.
+        let mut q = vec![format!("limit={}", p.limit.unwrap_or(50).clamp(1, 500))];
+        if !markets.is_empty() {
+            let ids: Vec<String> = markets.iter().map(|m| m.to_string()).collect();
+            q.push(format!("market={}", ids.join(",")));
+        }
+        if let Some(o) = p.outcome {
+            if markets.is_empty() {
+                return Err("outcome needs market".into());
+            }
+            let index = parse_outcome(Some(&o))?;
+            let ids: Vec<String> = markets
+                .iter()
+                .map(|m| outcome_id(*m, index).to_string())
+                .collect();
+            q.push(format!("outcome={}", ids.join(",")));
+        }
+        if let Some(s) = p.side {
+            let s = s.trim().to_ascii_lowercase();
+            if s != "buy" && s != "sell" {
+                return Err("side must be buy or sell".into());
+            }
+            q.push(format!("side={s}"));
+        }
+        if let Some(s) = p.status {
+            let s = s.replace(' ', "").to_ascii_lowercase();
+            if !s
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c == '_' || c == ',')
+            {
+                return Err(format!("bad status {s}"));
+            }
+            q.push(format!("status={s}"));
+        }
+        q.extend(p.from.map(|v| format!("from={v}")));
+        q.extend(p.to.map(|v| format!("to={v}")));
+        if let Some(c) = p.cursor {
+            if !c.chars().all(|c| c.is_ascii_digit() || c == '_') {
+                return Err(format!("bad cursor {c}"));
+            }
+            q.push(format!("cursor={c}"));
+        }
+        if p.events == Some(true) {
+            q.push("events=true".into());
+        }
+        let history = self.0.clob.order_history(key, &q.join("&")).await?;
+        Ok(pretty(&history))
     }
 
     #[tool(

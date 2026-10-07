@@ -219,21 +219,48 @@ impl Clob {
 
     /// Open orders of the wallet, `GET /v1/orders` signed with headers.
     pub async fn open_orders(&self, key: &PrivateKeySigner) -> Result<Value, String> {
+        self.signed_get(key, "/v1/orders", "open orders").await
+    }
+
+    /// Order history of the wallet, `GET /v1/orders/history`. `query` is the raw query string
+    /// without `?`; it is signed exactly as sent.
+    pub async fn order_history(
+        &self,
+        key: &PrivateKeySigner,
+        query: &str,
+    ) -> Result<Value, String> {
+        let target = if query.is_empty() {
+            "/v1/orders/history".to_string()
+        } else {
+            format!("/v1/orders/history?{query}")
+        };
+        self.signed_get(key, &target, "order history").await
+    }
+
+    /// GET of a wallet-only path, signed over the exact path and query with `X-Exchange-*` headers.
+    async fn signed_get(
+        &self,
+        key: &PrivateKeySigner,
+        target: &str,
+        what: &str,
+    ) -> Result<Value, String> {
         let me = key.address();
         let nonce = now_ms();
         let expiration = nonce + 20_000;
+        let mut preimage = b"GET\n".to_vec();
+        preimage.extend_from_slice(target.as_bytes());
         let req = HttpGetRequestV1 {
             protocolVersion: PROTOCOL_VERSION,
             account: me,
             signer: me,
-            targetHash: keccak256(b"GET\n/v1/orders"),
+            targetHash: keccak256(&preimage),
             nonce,
             expiration,
         };
         let signature = sign(key, &domain("Exchange HTTP", CHAIN_ID, EXCHANGE), &req)?;
         let resp = self
             .http
-            .get(format!("{}/v1/orders", self.base_url))
+            .get(format!("{}{target}", self.base_url))
             .header("X-Exchange-Account", me.to_string())
             .header("X-Exchange-Signer", me.to_string())
             .header("X-Exchange-Nonce", nonce.to_string())
@@ -241,14 +268,14 @@ impl Clob {
             .header("X-Exchange-Signature", signature)
             .send()
             .await
-            .map_err(|e| format!("open orders request failed: {e}"))?;
+            .map_err(|e| format!("{what} request failed: {e}"))?;
         let status = resp.status();
         let body: Value = resp
             .json()
             .await
-            .map_err(|e| format!("bad open orders response: {e}"))?;
+            .map_err(|e| format!("bad {what} response: {e}"))?;
         if !status.is_success() {
-            return Err(format!("open orders returned {status}: {body}"));
+            return Err(format!("{what} returned {status}: {body}"));
         }
         Ok(body)
     }
