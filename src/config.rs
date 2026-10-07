@@ -48,8 +48,8 @@ impl Config {
                 .to_string()
         };
         Ok(Self {
-            api_url: url("LUCYD_API_URL", "https://api.lucyd.trade"),
-            clob_url: url("LUCYD_CLOB_URL", "https://clob.lucyd.trade"),
+            api_url: url("LUCYD_API_URL", "https://api.testnet.lucyd.trade"),
+            clob_url: url("LUCYD_CLOB_URL", "https://clob.testnet.lucyd.trade"),
             rpc_url: url(
                 "LUCYD_RPC_URL",
                 "https://ethereum-sepolia-rpc.publicnode.com",

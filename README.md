@@ -1,6 +1,6 @@
 # Lucyd MCP server
 
-Connect an AI agent (Claude, Cursor or any [MCP](https://modelcontextprotocol.io) client) to [Lucyd](https://lucyd.trade), a prediction markets exchange. Ask in plain language to browse markets, read the order book, trade, close positions and collect winnings.
+Connect an AI agent (Claude, Cursor or any [MCP](https://modelcontextprotocol.io) client) to [Lucyd](https://testnet.lucyd.trade), a prediction markets exchange. Ask in plain language to browse markets, read the order book, trade, close positions and collect winnings.
 
 > Lucyd currently runs on the Ethereum Sepolia testnet with test USDC.
 
@@ -91,8 +91,8 @@ The wallet needs USDC to buy and a little Sepolia ETH to pay gas for one-time ap
 | `LUCYD_MAX_ORDER_USD` | `100` | Largest buy order in USDC |
 | `LUCYD_READ_ONLY` | `false` | `true` turns off every tool that trades or sends transactions |
 | `LUCYD_RPC_URL` | `https://ethereum-sepolia-rpc.publicnode.com` | Sepolia RPC node |
-| `LUCYD_API_URL` | `https://api.lucyd.trade` | Markets API |
-| `LUCYD_CLOB_URL` | `https://clob.lucyd.trade` | Order book |
+| `LUCYD_API_URL` | `https://api.testnet.lucyd.trade` | Markets API |
+| `LUCYD_CLOB_URL` | `https://clob.testnet.lucyd.trade` | Order book |
 
 ## Safety
 
@@ -102,7 +102,7 @@ The wallet needs USDC to buy and a little Sepolia ETH to pay gas for one-time ap
 
 ## How it works
 
-The server runs locally and talks to the agent over stdio. Market data comes from the public [API](https://api.lucyd.trade). Orders are signed with EIP-712 and sent to the order book over WebSocket (protocol in the [API docs](https://lucyd.trade)). Approvals and redemptions are plain transactions on Sepolia.
+The server runs locally and talks to the agent over stdio. Market data comes from the public [API](https://api.testnet.lucyd.trade). Orders are signed with EIP-712 and sent to the order book over WebSocket (protocol in the [API docs](https://testnet.lucyd.trade)). Approvals and redemptions are plain transactions on Sepolia.
 
 | Contract | Address |
 |---|---|
