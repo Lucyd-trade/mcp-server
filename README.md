@@ -106,10 +106,10 @@ The server runs locally and talks to the agent over stdio. Market data comes fro
 
 | Contract | Address |
 |---|---|
-| Exchange | `0xa2a6ee54609246c52dfa2a82cdf7886a40f7ceba` |
-| ConditionalTokens (outcome tokens) | `0x275C24F2e3942B70d7dce5b655696577121773F1` |
+| Exchange | `0x6588c789c6b6df8f8b6b92e6433f813cc2d1d4d0` |
+| ConditionalTokens (outcome tokens) | `0xB62eFc43C16b4E2Bf1aAAD33002368e55708538D` |
 | USDC (6 decimals) | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` |
-| AutoRedeemer | `0x7B8f86A503dEB47A51B672D435aD9610A571502a` |
+| AutoRedeemer | `0x42Bf669f0A3DCc95510001Ddbc43D56FdE67268F` |
 
 ## License
 
