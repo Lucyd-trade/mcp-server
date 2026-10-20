@@ -240,6 +240,8 @@ struct AutoRedeemParams {
 #[tool_router]
 impl Lucyd {
     #[tool(
+        title = "List markets",
+        annotations(title = "List markets", read_only_hint = true, open_world_hint = false),
         description = "List prediction markets on Lucyd. Each market asks whether the BTC price will be \
         Up or Down at its end date versus the strike (strike is the price times 1e8). Returns address (the market id), \
         state, period, start and end dates, strike, winner and volume."
@@ -254,6 +256,8 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Get market",
+        annotations(title = "Get market", read_only_hint = true, open_world_hint = false),
         description = "Full details of one market, including its rules and the ids of its up and down outcome tokens."
     )]
     async fn get_market(&self, Parameters(p): Parameters<MarketParams>) -> ToolResult {
@@ -267,6 +271,12 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Get order book",
+        annotations(
+            title = "Get order book",
+            read_only_hint = true,
+            open_world_hint = false
+        ),
         description = "Order book of a market outcome: bids (best first) and asks with prices in USDC per token \
         and sizes in tokens, plus best bid, best ask and mid. Buying down at p is the same book as selling up at 1 - p."
     )]
@@ -310,6 +320,8 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "List trades",
+        annotations(title = "List trades", read_only_hint = true, open_world_hint = false),
         description = "Recent trades, newest first. Filter by market and/or trader. Amounts are in USDC and tokens."
     )]
     async fn list_trades(&self, Parameters(p): Parameters<TradesParams>) -> ToolResult {
@@ -324,6 +336,12 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Get positions",
+        annotations(
+            title = "Get positions",
+            read_only_hint = true,
+            open_world_hint = false
+        ),
         description = "Positions of a wallet: tokens held per market and outcome, average price, current value and \
         profit. Settled markets show the payout. Defaults to the configured wallet."
     )]
@@ -338,6 +356,12 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Get trader stats",
+        annotations(
+            title = "Get trader stats",
+            read_only_hint = true,
+            open_world_hint = false
+        ),
         description = "Stats of a wallet: total and realized profit, volume, markets traded, win rate. \
         Defaults to the configured wallet."
     )]
@@ -349,6 +373,12 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Get P&L history",
+        annotations(
+            title = "Get P&L history",
+            read_only_hint = true,
+            open_world_hint = false
+        ),
         description = "Profit and loss over time of a wallet, as a series of points. Defaults to the configured wallet."
     )]
     async fn get_pnl_history(&self, Parameters(p): Parameters<PnlParams>) -> ToolResult {
@@ -359,7 +389,11 @@ impl Lucyd {
             .map(|v| pretty(&v))
     }
 
-    #[tool(description = "Leaderboard of traders, best first.")]
+    #[tool(
+        title = "Top traders",
+        annotations(title = "Top traders", read_only_hint = true, open_world_hint = false),
+        description = "Leaderboard of traders, best first."
+    )]
     async fn top_traders(&self, Parameters(p): Parameters<TopTradersParams>) -> ToolResult {
         let q = vec![
             ("sort", p.sort.unwrap_or_else(|| "pnl".into())),
@@ -370,6 +404,12 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Service status",
+        annotations(
+            title = "Service status",
+            read_only_hint = true,
+            open_world_hint = false
+        ),
         description = "Health of the Lucyd service: API and database, settlement of ended markets on time, \
         live trade stream. Use it when something looks stuck, e.g. a market is not resolving."
     )]
@@ -401,6 +441,8 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Get wallet",
+        annotations(title = "Get wallet", read_only_hint = true, open_world_hint = false),
         description = "The configured wallet: address, ETH (for gas) and USDC balances, whether trading is approved \
         and whether auto-redeem is on. Check this before the first trade."
     )]
@@ -408,13 +450,27 @@ impl Lucyd {
         self.chain()?.wallet().await.map(|v| pretty(&v))
     }
 
-    #[tool(description = "Open (resting) orders of the configured wallet on the order book.")]
+    #[tool(
+        title = "Get open orders",
+        annotations(
+            title = "Get open orders",
+            read_only_hint = true,
+            open_world_hint = false
+        ),
+        description = "Open (resting) orders of the configured wallet on the order book."
+    )]
     async fn get_open_orders(&self) -> ToolResult {
         let orders = self.0.clob.open_orders(self.key()?).await?;
         Ok(pretty(&orders))
     }
 
     #[tool(
+        title = "Get order history",
+        annotations(
+            title = "Get order history",
+            read_only_hint = true,
+            open_world_hint = false
+        ),
         description = "Past and current orders of the configured wallet, newest first: status, filled quantity, \
         reason. Kept until 7 days after the market resolves. Page with cursor = nextCursor until it is null."
     )]
@@ -480,6 +536,14 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Place order",
+        annotations(
+            title = "Place order",
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = true
+        ),
         description = "Place a limit order. For a market order use time_in_force fak with a price you accept: \
         buying, the highest price; selling, the lowest. Amounts are whole tokens; cost of a buy is shares x price USDC. \
         Returns the order id and what happened: placed (resting), trade (filled, possibly partly) or rejected."
@@ -514,6 +578,14 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Close position",
+        annotations(
+            title = "Close position",
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = true
+        ),
         description = "Close a position: sell all tokens the wallet holds on a market right away (fak order) \
         at the best available prices down to min_price."
     )]
@@ -572,6 +644,14 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Cancel orders",
+        annotations(
+            title = "Cancel orders",
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = true,
+            open_world_hint = true
+        ),
         description = "Cancel open orders by id. With no ids, cancels all open orders of the wallet, \
         or only those on `market` if given."
     )]
@@ -622,6 +702,14 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Approve trading",
+        annotations(
+            title = "Approve trading",
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = true
+        ),
         description = "One-time setup before trading: approve the Exchange contract to spend the wallet's USDC and \
         to move its outcome tokens. Sends up to two transactions and needs a little Sepolia ETH for gas."
     )]
@@ -631,6 +719,14 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Set auto-redeem",
+        annotations(
+            title = "Set auto-redeem",
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = true
+        ),
         description = "Turn automatic payout of winnings on or off. When on, winning tokens are redeemed to USDC \
         for the wallet soon after each market resolves. Sends one transaction."
     )]
@@ -643,6 +739,14 @@ impl Lucyd {
     }
 
     #[tool(
+        title = "Redeem winnings",
+        annotations(
+            title = "Redeem winnings",
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = true
+        ),
         description = "Collect the payout of a resolved market: exchanges the wallet's winning tokens for USDC \
         (1 USDC per token minus the fee, 0.5 per token if the market was voided)."
     )]
