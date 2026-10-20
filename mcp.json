@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "lucyd": {
+      "command": "npx",
+      "args": ["-y", "@lucyd/mcp"],
+      "env": {
+        "LUCYD_PRIVATE_KEY": ""
+      }
+    }
+  }
+}
