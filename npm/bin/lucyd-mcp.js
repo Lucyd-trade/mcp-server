@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Launcher: downloads the native lucyd-mcp binary for this platform from GitHub Releases
+// Launcher: downloads the native lucyd-mcp binary for this platform from data.testnet.lucyd.trade
 // on first run, checks it against checksums.json shipped in this package, then runs it.
 // stdout belongs to the MCP protocol, so all messages go to stderr.
 
@@ -11,6 +11,7 @@ const path = require('node:path')
 
 const { version } = require('../package.json')
 const REPO = 'lucyd-trade/mcp-server'
+const DOWNLOADS = 'https://data.testnet.lucyd.trade/mcp'
 
 const TARGETS = {
   'win32-x64': 'x86_64-pc-windows-msvc',
@@ -50,7 +51,7 @@ async function ensureBinary() {
   const expected = checksums[asset]
   if (!expected) fail(`no checksum for ${asset}`)
 
-  const url = `https://github.com/${REPO}/releases/download/v${version}/${asset}`
+  const url = `${DOWNLOADS}/v${version}/${asset}`
   process.stderr.write(`lucyd-mcp: downloading ${url}\n`)
   const res = await fetch(url)
   if (!res.ok) fail(`download failed: HTTP ${res.status}`)

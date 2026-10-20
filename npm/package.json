@@ -1,6 +1,7 @@
 {
   "name": "@lucyd/mcp",
   "version": "0.0.0",
+  "mcpName": "trade.lucyd/mcp",
   "description": "MCP server for Lucyd prediction markets: let AI agents browse markets and trade",
   "license": "MIT",
   "repository": {
@@ -8,11 +9,20 @@
     "url": "git+https://github.com/lucyd-trade/mcp-server.git"
   },
   "homepage": "https://github.com/lucyd-trade/mcp-server#readme",
-  "keywords": ["mcp", "mcp-server", "prediction-markets", "trading", "ai-agents"],
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "prediction-markets",
+    "trading",
+    "ai-agents"
+  ],
   "bin": {
     "lucyd-mcp": "bin/lucyd-mcp.js"
   },
-  "files": ["bin", "checksums.json"],
+  "files": [
+    "bin",
+    "checksums.json"
+  ],
   "engines": {
     "node": ">=18"
   },

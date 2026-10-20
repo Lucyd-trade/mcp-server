@@ -41,7 +41,7 @@ Without a wallet key the server works read-only: markets, books, trades and any 
 
 The easiest way needs only [Node.js](https://nodejs.org) 18 or newer: the client runs `npx -y @lucyd/mcp`, which downloads the binary for your system on first run and checks its SHA-256. Nothing else to install, see the configs below.
 
-Without Node.js, download the binary for your system from [Releases](https://github.com/lucyd-trade/mcp-server/releases) and put it anywhere, for example `~/bin/lucyd-mcp` (`lucyd-mcp.exe` on Windows). On macOS and Linux make it executable with `chmod +x lucyd-mcp`. Then use its path instead of `npx` in the configs below.
+Without Node.js, download the binary for your system from [data.testnet.lucyd.trade/mcp](https://data.testnet.lucyd.trade/mcp/) (open the latest version folder; `SHA256SUMS` there lists the checksums) and put it anywhere, for example `~/bin/lucyd-mcp` (`lucyd-mcp.exe` on Windows). On macOS and Linux make it executable with `chmod +x lucyd-mcp`. Then use its path instead of `npx` in the configs below.
 
 Or build from source with [Rust](https://rustup.rs):
 

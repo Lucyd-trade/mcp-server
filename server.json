@@ -1,0 +1,40 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "trade.lucyd/mcp",
+  "title": "Lucyd",
+  "description": "Trade Bitcoin Up/Down prediction markets on Lucyd: markets, order books, orders, positions.",
+  "websiteUrl": "https://lucyd.trade/mcp",
+  "repository": {
+    "url": "https://github.com/lucyd-trade/mcp-server",
+    "source": "github"
+  },
+  "version": "0.1.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@lucyd/mcp",
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "LUCYD_PRIVATE_KEY",
+          "description": "Wallet key that signs orders. Without it the server is read-only",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "LUCYD_MAX_ORDER_USD",
+          "description": "Largest buy order in USDC (default 100)",
+          "isRequired": false
+        },
+        {
+          "name": "LUCYD_READ_ONLY",
+          "description": "true turns off every tool that trades or sends transactions",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}
