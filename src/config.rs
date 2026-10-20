@@ -17,6 +17,10 @@ pub struct Config {
     pub read_only: bool,
     /// Largest order notional in USDC.
     pub max_order_usd: f64,
+    /// Hosted mode: serve MCP over HTTP on this address instead of stdio, read-only and without a wallet.
+    pub http_addr: Option<String>,
+    /// Host names the HTTP server answers to (DNS rebinding protection).
+    pub http_hosts: Vec<String>,
 }
 
 fn env(name: &str) -> Option<String> {
@@ -41,6 +45,16 @@ impl Config {
                 .map_err(|_| anyhow::anyhow!("LUCYD_MAX_ORDER_USD must be a number"))?,
             None => 100.0,
         };
+        let http_addr = env("LUCYD_HTTP_ADDR");
+        if http_addr.is_some() && key.is_some() {
+            anyhow::bail!("LUCYD_HTTP_ADDR is a public read-only server: unset LUCYD_PRIVATE_KEY");
+        }
+        let http_hosts = env("LUCYD_HTTP_HOSTS")
+            .unwrap_or_else(|| "mcp.lucyd.trade,localhost,127.0.0.1".into())
+            .split(',')
+            .map(|h| h.trim().to_string())
+            .filter(|h| !h.is_empty())
+            .collect();
         let url = |name, default: &str| {
             env(name)
                 .unwrap_or_else(|| default.to_string())
@@ -60,6 +74,8 @@ impl Config {
                 Some("1" | "true" | "yes")
             ),
             max_order_usd,
+            http_addr,
+            http_hosts,
         })
     }
 }

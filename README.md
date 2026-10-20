@@ -37,6 +37,12 @@ Example requests:
 
 Without a wallet key the server works read-only: markets, books, trades and any wallet's public stats.
 
+## Hosted, read-only
+
+For market data only, nothing to install: add `https://mcp.lucyd.trade/mcp` as a custom connector (remote MCP server, no authentication) in Claude, ChatGPT or any client that supports Streamable HTTP. It has the market data tools: markets, order books, trades, and positions and stats of any wallet address. Trading needs your own wallet key, so it works only with the local server below.
+
+To run your own hosted copy, set `LUCYD_HTTP_ADDR` (for example `0.0.0.0:3006`) and `LUCYD_HTTP_HOSTS` (the host names it answers to); the server then serves MCP at `/mcp` and refuses to start with a wallet key.
+
 ## Install
 
 The easiest way needs only [Node.js](https://nodejs.org) 18 or newer: the client runs `npx -y @lucyd/mcp`, which downloads the binary for your system on first run and checks its SHA-256. Nothing else to install, see the configs below.

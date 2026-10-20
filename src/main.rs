@@ -9,8 +9,16 @@ use alloy::{
     signers::local::PrivateKeySigner,
 };
 use rmcp::{
-    ServerHandler, ServiceExt, handler::server::wrapper::Parameters, schemars, tool, tool_handler,
-    tool_router, transport::stdio,
+    ServerHandler, ServiceExt,
+    handler::server::{router::tool::ToolRouter, wrapper::Parameters},
+    model::{Implementation, ServerCapabilities, ServerConfig},
+    schemars, tool, tool_handler, tool_router,
+    transport::{
+        stdio,
+        streamable_http_server::{
+            StreamableHttpServerConfig, StreamableHttpService, session::never::NeverSessionManager,
+        },
+    },
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -34,7 +42,32 @@ struct Inner {
     http: reqwest::Client,
     clob: Clob,
     chain: Option<Chain>,
+    router: ToolRouter<Lucyd>,
 }
+
+/// Tools that need the user's wallet key; the hosted server has none and hides them.
+const WALLET_TOOLS: &[&str] = &[
+    "get_wallet",
+    "get_open_orders",
+    "get_order_history",
+    "place_order",
+    "close_position",
+    "cancel_orders",
+    "approve_trading",
+    "set_auto_redeem",
+    "redeem",
+];
+
+const INSTRUCTIONS: &str = "Lucyd is a prediction market exchange. Markets ask whether the BTC price goes Up or Down \
+    over a period (5m to 1 day). Outcome tokens trade between 0.0025 and 0.9975 USDC and a winning token pays 1 USDC. \
+    The exchange runs on the Sepolia testnet with test USDC.";
+
+const LOCAL_INSTRUCTIONS: &str = " Before the first trade check get_wallet and run approve_trading if it is not \
+    ready. Confirm with the user before placing orders, closing positions or sending transactions.";
+
+const HOSTED_INSTRUCTIONS: &str = " This hosted server is read-only: markets, order books, trades, and positions and \
+    stats of any wallet address. To trade, the user installs the local server with their own wallet key \
+    (npx -y @lucyd/mcp, see https://lucyd.trade/mcp).";
 
 fn pretty(v: &Value) -> String {
     serde_json::to_string_pretty(v).unwrap_or_else(|_| v.to_string())
@@ -622,15 +655,19 @@ impl Lucyd {
     }
 }
 
-#[tool_handler(
-    name = "lucyd",
-    instructions = "Lucyd is a prediction market exchange. Markets ask whether the BTC price goes Up or Down over a period \
-        (5m to 1 day). Outcome tokens trade between 0.0025 and 0.9975 USDC and a winning token pays 1 USDC. \
-        Before the first trade check get_wallet and run approve_trading if it is not ready. \
-        Confirm with the user before placing orders, closing positions or sending transactions. \
-        The exchange runs on the Sepolia testnet with test USDC."
-)]
-impl ServerHandler for Lucyd {}
+#[tool_handler(router = self.0.router)]
+impl ServerHandler for Lucyd {
+    fn get_info(&self) -> ServerConfig {
+        let mode = if self.0.cfg.http_addr.is_some() {
+            HOSTED_INSTRUCTIONS
+        } else {
+            LOCAL_INSTRUCTIONS
+        };
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(Implementation::new("lucyd", env!("CARGO_PKG_VERSION")))
+            .with_instructions(format!("{INSTRUCTIONS}{mode}"))
+    }
+}
 
 impl Lucyd {
     async fn api(&self, path: &str, query: &[(&str, String)]) -> Result<Value, String> {
@@ -655,7 +692,13 @@ impl Lucyd {
 
     fn key(&self) -> Result<&PrivateKeySigner, String> {
         self.0.cfg.key.as_ref().ok_or_else(|| {
-            "no wallet configured: set LUCYD_PRIVATE_KEY in the MCP server settings".into()
+            if self.0.cfg.http_addr.is_some() {
+                "this hosted server has no wallet: pass a wallet address, or install the local server \
+                 (npx -y @lucyd/mcp) to use your own wallet"
+                    .into()
+            } else {
+                "no wallet configured: set LUCYD_PRIVATE_KEY in the MCP server settings".into()
+            }
         })
     }
 
@@ -729,12 +772,45 @@ async fn main() -> anyhow::Result<()> {
         http: http.clone(),
         base_url: cfg.clob_url.clone(),
     };
+    let mut router = Lucyd::tool_router();
+    let Some(addr) = cfg.http_addr.clone() else {
+        let server = Lucyd(Arc::new(Inner {
+            cfg,
+            http,
+            clob,
+            chain,
+            router,
+        }));
+        server.serve(stdio()).await?.waiting().await?;
+        return Ok(());
+    };
+
+    for name in WALLET_TOOLS {
+        router.remove_route(name);
+    }
+    let hosts = cfg.http_hosts.clone();
     let server = Lucyd(Arc::new(Inner {
         cfg,
         http,
         clob,
         chain,
+        router,
     }));
-    server.serve(stdio()).await?.waiting().await?;
+    // Stateless: every POST is answered on its own, so restarts need no session store.
+    let config = StreamableHttpServerConfig::default()
+        .with_legacy_session_mode(false)
+        .with_json_response(true)
+        .with_allowed_hosts(hosts);
+    let mcp = StreamableHttpService::new(
+        move || Ok(server.clone()),
+        Arc::new(NeverSessionManager::default()),
+        config,
+    );
+    let app = axum::Router::new()
+        .route_service("/mcp", mcp)
+        .route("/health", axum::routing::get(|| async { "ok" }));
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    eprintln!("lucyd-mcp: serving read-only MCP on http://{addr}/mcp");
+    axum::serve(listener, app).await?;
     Ok(())
 }

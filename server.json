@@ -8,7 +8,7 @@
     "url": "https://github.com/lucyd-trade/mcp-server",
     "source": "github"
   },
-  "version": "0.1.1",
+  "version": "0.1.2",
   "packages": [
     {
       "registryType": "npm",
@@ -35,6 +35,12 @@
           "isRequired": false
         }
       ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.lucyd.trade/mcp"
     }
   ]
 }
