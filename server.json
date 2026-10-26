@@ -4,11 +4,20 @@
   "title": "Lucyd",
   "description": "Trade Bitcoin Up/Down prediction markets on Lucyd: markets, order books, orders, positions.",
   "websiteUrl": "https://lucyd.trade/mcp",
+  "icons": [
+    {
+      "src": "https://lucyd.trade/lucyd-icon-512.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "512x512"
+      ]
+    }
+  ],
   "repository": {
     "url": "https://github.com/lucyd-trade/mcp-server",
     "source": "github"
   },
-  "version": "0.1.3",
+  "version": "0.1.4",
   "packages": [
     {
       "registryType": "npm",
